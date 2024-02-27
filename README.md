@@ -27,11 +27,9 @@ The primary aim is to compare the time taken for checking and cleaning between t
 
 ### Binomial Distributions: Cleaning Probabilities
 
-#### Stock Cages
-The probability of stock cages being cleaned increases linearly with the number of animals. Interestingly, little difference exists in the cleaning probability between cages with two, three, or four animals.
+**Stock Cages** - The probability of stock cages being cleaned increases linearly with the number of animals. Interestingly, little difference exists in the cleaning probability between cages with two, three, or four animals.
 
-#### Mating Cages
-Mating cages with more than seven animals are cleaned every week. Moreover, smaller litters have similar cleaning rates to adult stock cages.
+**Mating Cages** - Mating cages with more than seven animals are cleaned every week. Moreover, smaller litters have similar cleaning rates to adult stock cages.
 
 ## Tunnel vs. Traditional Comparison
 
@@ -39,19 +37,15 @@ When comparing tunnel and traditional handling, significant differences are obse
 
 ### Physical Animal Checks
 
-#### Stock Cages
-No significant difference is found in checking between tunnel and traditional cages for stock cages.
+**Stock Cages** - No significant difference is found in checking between tunnel and traditional cages for stock cages.
 
-#### Mating Cages
-Similarly, no significant difference is observed in checking between tunnel and traditional cages for mating cages.
+**Mating Cages** - Similarly, no significant difference is observed in checking between tunnel and traditional cages for mating cages.
 
 ### Cleaning Times
 
-#### Stock Cages
-Tunnel cages take significantly more time to clean than traditional cages, indicating a difference in maintenance efficiency.
+**Stock Cages** - Tunnel cages take significantly more time to clean than traditional cages, indicating a difference in maintenance efficiency.
 
-#### Mating Cages
-After excluding outliers, a significant difference is found between the cleaning times of tunnel and traditional cages for mating cages, with tunnel cages taking substantially longer to clean.
+**Mating Cages** - After excluding outliers, a significant difference is found between the cleaning times of tunnel and traditional cages for mating cages, with tunnel cages taking substantially longer to clean.
 
 ## Modelling Checking & Cleaning Times
 
