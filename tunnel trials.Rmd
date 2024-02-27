@@ -1,0 +1,601 @@
+---
+title: "Tunnel Trials"
+author: "Malachy McGovern"
+date: "13/06/2022"
+output: pdf_document
+---
+
+## Overview
+
+```{block, Trial Overview}
+This trial aims to assess the efficiency of both traditional handling and tunnel handling methods. 
+Here we are considering efficiency as the rate of completion of typical husbandry tasks. This 
+includes tasks such as physically checking animals and the cleaning process of cages. On top of these
+basic tasks, we have also record the time taken with mating-specific actions such as sexing and
+weaning. 
+
+This trial has been conducted over four weeks using randomly selected 20 cages from 4 separate racks 
+across two rooms. When a selected cage has been moved off the rack or culled, a new cage will be randomly selected to replace it. Currently this has led to a sample of 264 observation of checking a cage. 
+
+```
+
+###   Timing
+
+```{block, Timing}
+The process of timing was fairly simple. Once the cage was under the hood ready to be checked the timer would start. The timer would be stopped once the technician had completed all relevant tasks to the cage. This was recorded then on a recording card placed behind the card label of the cage. Throughout the physical checking and cleaning process it is understood that there might be extraneous tasks that may come up. This would include refilling diet containers, balconies, enrichment materials or recording data on MCMS.. These tasks were encouraged to be kept outside of the timing period unless absolutely necessary.  
+```
+
+##    Variables
+
+```{block, Variables}
+ Total time - Dependent variable of the Time taken to check cage (seconds)
+ 
+ Cage Function - Categorical cage (Mating or Stock)
+ 
+ Number of animals - Numerical expressing the total number of animals in that cage for that weeks check
+ 
+ Binary variables:
+ (1 indicates the presence of an action, 0 - no action)
+ 
+ Cleaned - Changing the cage base
+ 
+ Sexed - The process of sexing the litter
+ 
+ Weaned - Weaning the litter 
+ 
+
+```
+
+```{r, echo=FALSE,warning=FALSE}
+knitr::opts_chunk$set(fig.width=5, fig.height=5, fig.align = "center") 
+
+```
+
+
+```{r, echo =FALSE,message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(ggthemes)
+library(knitr)
+
+week1 <- read.csv('week1.csv')
+week1 <- week1 %>% mutate(week = 1)
+
+week2 <- read.csv('week2.csv')
+week2 <- week2 %>% mutate(week = 2)
+
+week3 <- read.csv('week3.csv')
+week3 <- week3 %>% mutate(week = 3)
+
+week4 <- read.csv('week4.csv')
+week4 <- week3 %>% mutate(week = 4)
+
+culmtidy <- week1 %>% 
+  bind_rows(week2) %>% 
+  bind_rows(week3) %>%
+  bind_rows(week4) %>% 
+  separate(col =time, into= c("min","sec"),sep = ":") %>% 
+  mutate(min = as.numeric(min),sec = as.numeric(sec)) %>% 
+  mutate(total_time = sec+min*60,
+         Condition=as.factor(Condition),
+         Cage.Function=as.factor(Cage.Function)) %>% 
+  filter(total_time>0)
+```
+
+
+```{r,echo=FALSE}
+
+#Cage categories
+
+stock <- culmtidy %>% 
+  filter(Cage.Function=='Stock')
+
+matings <- culmtidy %>% 
+  filter(Cage.Function=="Mating")
+
+cleaned <- culmtidy %>% filter(Cleaned==1)
+uncleaned <- culmtidy %>% filter(Cleaned==0)
+```
+
+##    Aims Of Analysis
+
+```{block, Aims}
+
+Over these past four weeks 264 observations were collected of instances going into a cage. With this sample size there are a great many things that can be achieved analytically. The primary aim is to compare the times checking and cleaning between tunnel and traditional cages. When looking collectively the easiest way to do this would be with a simple T-Test. This statistical test will tell us whether the two groups differ as well as where we expect 95% of the times would lie for each condition.
+
+Being able to identify differences is one thing, but being able to predict times is another. The next stage of analysis would be to construct a regression model from the two conditions. This model will essentially give us a way of predicting how long it will take to be in the cage based on a couple of variables. The number of animals and whether you have to clean it are both universal factors between tunnel and normal cages. For mating whether you have to sex or wean pups can also be added into this model. As a result of this, we would generate a way to predict how long it may take a range of different cages to clean. For example, we could possibly predict how long it would take to go into a mating cage that needs cleaning and sexing, or a stock cage with four mice. 
+
+As an added extra, this report will also include a probability distribution between number of mice and the likelihood it will be cleaned. This could indicate how often some cages may need cleaning and thus how long you should expect a cage to last depending on the number of animals in it. 
+
+
+```
+
+------------------------------------------------------------------------------------
+
+
+
+
+
+
+##    Binomial distributions: Cleaning Probabilities
+
+```{block, Cleaning Probabilities}
+
+This section pertains to the last aim in the analytic section; generating a probability distribution.
+
+```
+
+###   Stock
+
+```{r,echo=FALSE}
+
+cleaned_by_N <- cleaned %>%
+  filter(Cage.Function=='Stock') %>% 
+  group_by(Number.Of.Animals..175.) %>%
+  count()
+
+  
+Uncleaned_by_N <- uncleaned %>%
+  filter(Cage.Function=='Stock') %>% 
+  group_by(Number.Of.Animals..175.) %>%
+  count()
+
+counts_by_N <- cleaned_by_N %>%
+  full_join(Uncleaned_by_N, by = "Number.Of.Animals..175.") %>% 
+  mutate(Not_cleaned = n.y, Cleaned = n.x) %>% 
+  select(-c(n.y,n.x))
+
+counts_by_N[6,2] <- 0
+
+
+counts_by_N <- counts_by_N %>% 
+  mutate(total = as.integer(Cleaned+Not_cleaned),
+    `P(clean)` = (Cleaned/total)*100)
+counts_by_N[6,5] <- 100
+
+```
+
+```{block, Graph}
+
+The graph below shows the probability of stock cages being cleaned relative to the number of animals within the cage. Understandably there does appear to be a linear growth as the number of animals increase. This makes sense as of course as more animals will bring in more excrement and thus more mess. Interestingly, there seems very little difference between the chance of cleaning cages with two animals versus that with three or four animals. 
+
+```
+
+
+```{r,ig.align="center", echo = FALSE}
+counts_by_N %>%mutate(Number.Of.Animals..175.=as.factor(Number.Of.Animals..175.)) %>% 
+  ggplot(aes(Number.Of.Animals..175.,`P(clean)`, fill = Number.Of.Animals..175.))+
+  geom_col()+
+  labs(title = "Cleaning probabilities",subtitle = "Probability of cleaning a stock cage by the number of animals per week") +
+  xlab("Number of animals")+
+  ylab("Chance of being cleaned")+
+  theme_stata()+
+  theme(legend.position = "none")+
+  scale_fill_viridis_d()
+```
+
+\newpage
+
+```{block}
+Below is a table which gives the exact probabilities for each group of stock cages. 
+```
+
+
+```{r,ig.align="center", echo = FALSE}
+
+kable(counts_by_N, format = "markdown", digits = 2)
+
+```
+
+
+
+###   Matings
+
+```{block}
+Intuitively, mating cages will have much larger numbers of animals per cage. Below we can see that once cages exceed seven animals they are seemingly cleaned every week. It is also interesting to see that the cleaning rate for smaller litters is actually very similar to if they were all adult stock. This also should come at now surprise given that pups likely make much less of a mess per mouse than their adult counterparts.  
+
+```
+
+
+```{r,echo=FALSE}
+
+cleaned_by_N2 <- cleaned %>%
+  filter(Cage.Function=='Mating') %>% 
+  group_by(Number.Of.Animals..175.) %>%
+  count()
+
+  
+Uncleaned_by_N2 <- uncleaned %>%
+  filter(Cage.Function=='Mating') %>% 
+  group_by(Number.Of.Animals..175.) %>%
+  count()
+
+counts_by_N2 <- cleaned_by_N2 %>%
+  full_join(Uncleaned_by_N2, by = "Number.Of.Animals..175.") %>% 
+  mutate(Not_cleaned = n.y, Cleaned = n.x) %>% 
+  select(-c(n.y,n.x)) %>% 
+  arrange(Number.Of.Animals..175.)
+
+counts_by_N2[1,3] <- 0
+counts_by_N2[6,2] <- 0
+counts_by_N2[7,2] <- 0
+counts_by_N2[8,2] <- 0
+counts_by_N2[10,2] <- 0
+
+
+counts_by_N2 <- counts_by_N2 %>% 
+  mutate(total = as.integer(Cleaned+Not_cleaned),
+    `P(clean)` = (Cleaned/total)*100)
+condition <- c(`0`="Normal", `1`="Tunnel")
+
+```
+
+```{r,ig.align="center", echo = FALSE}
+counts_by_N2 %>%mutate(Number.Of.Animals..175.=as.factor(Number.Of.Animals..175.)) %>% 
+  ggplot(aes(Number.Of.Animals..175.,`P(clean)`, fill = Number.Of.Animals..175.))+
+  geom_col()+
+  labs(title = "Cleaning probabilities",subtitle = "Probability of cleaning a mating cage by the number of animals per week") +
+  xlab("Number of animals")+
+  ylab("Chance of being cleaned")+
+  theme_stata()+
+  theme(legend.position = "none")+
+  scale_fill_viridis_d()
+
+```
+
+\newpage
+
+
+```{r, echo = FALSE}
+kable(counts_by_N2, format = "markdown", digits = 2)
+```
+
+
+
+--------------------------------------------------------------------------------------------------
+
+
+
+
+#  Tunnels vs Traditional 
+
+```{block}
+When conducting a comparison between these two groups its important to identify separating categories. For example matings and stock are quite different given that mating cages have on average more animals and more action that need to occur. Therefore the distribution of times in the cage are very different. This can be seen in the density plot and T-Tests below. 
+```
+
+
+```{r, echo = FALSE, fig.height=3, fig.width=6}
+culmtidy %>% 
+  ggplot(aes(total_time, group = Cage.Function, fill = Cage.Function))+
+  geom_density(alpha = 0.7)+
+  facet_wrap("Condition", labeller = as_labeller(condition))
+```
+
+
+```{block}
+The density plot illustrates matings collectively taking more time than stock cages for both normal and tunnel cages. The tests below also statistically verify this claim. The first showing that matings and stock differ significantly in Normal cages (p =0.009785) as well as tunnel cages (p =0.0018). 
+
+Therefore, going forward comparisons between conditions will be made individually with mating and stock categories.
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+normal <- culmtidy %>% filter(Condition==0)
+
+normalSvsM <- t.test(normal$total_time~normal$Cage.Function)
+
+Tunnel <- culmtidy %>% filter(Condition==1)
+
+tunnelSvsM <- t.test(Tunnel$total_time~Tunnel$Cage.Function)
+
+
+```
+
+
+
+##   Physical animal checks
+
+### Stock
+
+
+```{r,ig.align="center", echo = FALSE}
+stock %>% 
+  filter(Cleaned==0) %>% 
+  group_by(Condition) %>% 
+  ggplot(aes(Condition, total_time, group = Condition,fill = Condition))+
+  geom_boxplot()+theme_stata()+ylab("Total Time")
+
+uncleanstock <- stock %>% 
+  filter(Cleaned==0) %>% 
+  group_by(Condition) %>% 
+  select(Condition,total_time) %>% 
+  arrange(Condition)
+
+t.test(uncleanstock$total_time~uncleanstock$Condition)
+```
+
+```{block}
+The boxplots display that checking stock cages do not seem to differ in where the middle 50% of the observations lie (the box part). This is again verified by a t-test which stated that there was no significant difference (p = 0.3703) in checking between the conditions. 
+```
+
+###   Matings
+
+```{block, Physical animal checks Matings}
+The same process as above is repeated here and the outcome is the same. Mating cages that have only been physically checked do not appear to differ significantly (p = 0.1038). However, it is important to understand that the sample of mating cages not cleaned is really small. In reality mating cages are cleaned much more frequently so regardless the findings of just physical checks will not impact much.
+```
+
+
+```{r,ig.align="center", echo = FALSE}
+matings %>% 
+  filter(Cleaned==0) %>% 
+  group_by(Condition) %>% 
+  ggplot(aes(Condition, total_time, group = Condition,fill = Condition))+
+  geom_boxplot()+theme_stata()+ylab("Total Time")+labs(title = "Physical checks on Mating cages")
+
+uncleanmatings <- matings %>% 
+  filter(Cleaned==0) %>% 
+  group_by(Condition) %>% 
+  select(Condition,total_time) %>% 
+  arrange(Condition)
+
+t.test(uncleanmatings$total_time~uncleanmatings$Condition)
+```
+
+
+
+##    Cleaning times
+
+###   Stock
+
+```{block, Cleaning times Stock}
+According to the analysis Below, stock cages within the tunnel trial take significantly (p = 0.00244)
+more time to clean than control cages. From this we would expect that 95% of control cages would take
+between 25.912 to 41.161 seconds to clean compared to the average tunnel cages.
+
+```
+
+```{r,ig.align="center", echo = FALSE}
+
+stock %>% 
+  filter(Cleaned==1) %>% 
+  group_by(Condition) %>% 
+  ggplot(aes(Condition, total_time, fill = Condition))+
+  geom_boxplot()+
+  theme_stata()+ 
+  theme(legend.position = "none")+
+  labs(title = "Cleaned Stock", subtitle = "Distribution of cleaning times")+
+  ylab("Total cleaning Time")
+
+cleanstock <- stock %>% 
+  filter(Cleaned==1) %>% 
+  group_by(Condition) %>% 
+  select(Condition,total_time) %>% 
+  arrange(Condition)
+
+t.test(cleanstock$total_time~cleanstock$Condition)
+
+```
+
+
+
+
+###   Matings
+
+
+```{block, Cleaning times Matings}
+In the observations of mating cages that had to be cleaned you can see that there appears to be an outlier in the normal  condition. This sole outlier turned out to include the time taken to add information onto MCMS. This extraneous task is meant to occur outside of the timing interval. Therefore it was excluded as an observation for this analysis. 
+```
+
+```{r,ig.align="center", echo = FALSE}
+#excluded MCMS outlier  
+
+matings %>%
+  filter(Cleaned==1) %>% 
+  group_by(Condition) %>% 
+  ggplot(aes(Condition, total_time, group = Condition, fill = Condition))+
+  geom_boxplot()+
+  theme_stata()+
+  theme(legend.position = "none")+
+  labs(title = "Cleaned Matings", subtitle = "Distribution of cleaning times")+
+  ylab("Total cleaning Time")
+
+matings <- matings[-c(21),]
+
+cleanmatings <- matings %>% 
+  filter(Cleaned==1) %>% 
+  group_by(Condition) %>% 
+  select(Condition,total_time) %>% 
+  arrange(Condition)
+
+t.test(cleanmatings$total_time~cleanmatings$Condition)
+  
+
+```
+
+
+```{block}
+As it turns out this outlier had a sizable effect on the difference in cleaning times. Before its removal there was no significant difference between the groups (p = 0.0664). After excluding it a significant difference was found between the two groups (p = 0.008405). Following this it can be seen that 95% of normal cages take between 10.84457 to 91.86666 to clean. More importantly, there are sizeable differences in means. 
+
+Normal Cages - 49.13333  seconds
+
+Tunnel Cages - 102.07407 seconds
+
+```
+
+
+
+-------------------------------------------------------------------------------------------------
+
+
+
+# Modelling checking & cleaning times: Building a comprehensive model
+
+```{block}
+In the section below we will be constructing a series of regression models. The purpose of a regression model is essentially to predict a variable from a collection of other variables. In our scenario, this will help us predict how much time it may take to complete a cage depending on what needs to be done in it. To give you an idea of what this may look like I have included a simple model for the number of animals and the time to clean. 
+
+```
+
+##    Stock
+
+
+```{r,ig.align="center",message=FALSE,echo = FALSE}
+stock_ctrl <- stock %>% filter(Condition ==0)
+stock_trial <- stock %>% filter(Condition ==1)
+```
+
+
+```{r,ig.align="center", echo = FALSE}
+SLM_stock <- lm(stock$total_time ~ stock$Number.Of.Animals..175.)
+summary(SLM_stock)
+
+newcage <- data.frame(c(3))
+
+```
+
+```{block}
+The first thing to mention in this simple linear regression is that both the value of the intercept and the coefficient (multiplier) for the variable the number of animals is correct. In simple terms all of our equation is accurate. The equation would be as follows:
+
+Total Time = (12.9122) + 5.8300(Number of animals)
+
+So for instance if we had a cage with three animals, our model would predict the total time to be:
+
+Total Time = (12.9122) + 5.8300(3)
+Total Time = 30.4022 seconds
+
+
+
+```
+
+```{r,ig.align="center", echo = FALSE, fig.width=5, fig.height=5}
+stock %>%
+  ggplot(aes(Number.Of.Animals..175., total_time))+
+  geom_point()+geom_point(aes(x=3,y=30.4022),colour="red", size = 5)+
+  geom_smooth(method = "lm")+
+  xlab("Number of Animals")+
+  ylab("Total Time")+
+  theme_stata()
+
+```
+ 
+```{block}
+The graph above shows our model and the red point would be our predicted point for a cage of three mice. It is also important to note the the grey shaded area around our model line is a area we predict that 95% of average values would lie in.  
+
+```
+
+
+
+
+```{r,ig.align="center", echo = FALSE}
+labels <- c(`0`="Not cleaned", `1`="Cleaned")
+
+stock %>% ggplot(aes(Number.Of.Animals..175.,total_time, color = Condition))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  theme_stata()+
+  scale_color_discrete()+
+  facet_wrap("Cleaned", labeller =as_labeller(labels))+
+  xlab("Number of animals")+
+  ylab("Time in cage(sec)")
+
+```
+
+```{block, Graph description}
+
+
+```
+
+
+```{r}
+MLM_stock_ctrl <- lm(stock_ctrl$total_time ~ stock_ctrl$Number.Of.Animals..175.+ stock_ctrl$Cleaned)
+
+summary(MLM_stock_ctrl) 
+
+MLM_stock_trial <- lm(stock_trial$total_time ~ stock_trial$Number.Of.Animals..175.+ stock_trial$Cleaned)
+
+summary(MLM_stock_trial) 
+
+```
+
+
+```{block, MLM explanation & Application}
+
+There are two comprehensive models above. Each hold the following equation:
+
+Normal Cages
+
+Total time = 8.3787 +(Number Of animals)(4.7119) + (Cleaned)(8.6088) 
+
+
+Tunnel Cages
+
+Total time = 9.860 +(Number Of animals)(3.939) + (Cleaned)(22.747) 
+
+
+```
+
+
+##    Matings
+
+
+```{r,ig.align="center", echo = FALSE}
+matings_ctrl <- matings %>% filter(Condition ==0)
+
+SLM_matings_ctrlX_nAnimals <- lm(matings_ctrl$total_time ~ matings_ctrl$Number.Of.Animals..175.)
+
+summary(SLM_matings_ctrlX_nAnimals)
+
+matings_trial <- matings %>% filter(Condition ==1)
+
+SLM_matings_trialX_nAnimals <- lm(matings_trial$total_time ~ matings_trial$Number.Of.Animals..175.)
+
+summary(SLM_matings_trialX_nAnimals)
+```
+
+```{block}
+
+```
+ 
+
+```{r,ig.align="center", echo = FALSE}
+labels <- c(`0`="Not cleaned", `1`="Cleaned")
+
+matings %>% ggplot(aes(Number.Of.Animals..175.,total_time, color = Condition))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  theme_stata()+
+  scale_color_discrete()+
+  facet_wrap("Cleaned", labeller =as_labeller(labels))+
+  xlab("Number of animals")+
+  ylab("Time in cage(sec)")
+
+```
+
+
+```{r}
+MLM_matings_ctrl <- lm(matings_ctrl$total_time ~ 
+                         matings_ctrl$Number.Of.Animals..175.+
+                         matings_ctrl$Cleaned+
+                         matings_ctrl$sexed+
+                         matings_ctrl$weaned)
+
+summary(MLM_matings_ctrl)
+
+
+MLM_matings_trial <- lm(matings_trial$total_time ~ 
+                         matings_trial$Number.Of.Animals..175.+
+                         matings_trial$Cleaned+
+                         matings_trial$sexed+
+                         matings_trial$weaned)
+
+summary(MLM_matings_trial)
+
+```
+
+
+```{block, MLM summary mating}
+
+```
+
+
+
+
